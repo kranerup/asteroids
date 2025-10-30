@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg1"
+   width="45.055988"
+   height="29.281017"
+   viewBox="0 0 45.055988 29.281018"
+   sodipodi:docname="ufo.png"
+   inkscape:version="1.3.2 (1:1.3.2+202311252150+091e20ef0f)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#000000"
+     bordercolor="#cccccc"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="1"
+     inkscape:pagecheckerboard="true"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="10.294044"
+     inkscape:cx="29.53164"
+     inkscape:cy="24.383032"
+     inkscape:window-width="1744"
+     inkscape:window-height="912"
+     inkscape:window-x="0"
+     inkscape:window-y="32"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer1"
+     inkscape:label="sprite"
+     transform="translate(-286.5798,-117.41434)">
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:2.166;stroke-dasharray:none;stroke-opacity:1"
+       d="m 288.86602,136.54802 12.26507,-9.11892 4.40129,-8.79756 8.0013,-0.12306 3.64208,8.70155 12.51971,9.01931 -11.61178,9.23977 -16.95728,0.14029 z"
+       id="path1" />
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:2.166;stroke-dasharray:none;stroke-opacity:1"
+       d="m 287.6628,138.1209 v -3.92431 h 42.88999 v 4.09907 z"
+       id="path2" />
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:2.166;stroke-dasharray:none;stroke-opacity:1"
+       d="m 301.6128,126.83458 h 15.07048"
+       id="path3" />
+  </g>
+</svg>
