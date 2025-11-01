@@ -53,10 +53,20 @@ class Game:
         self.speed = { 0: 1.0, 1:1.5, 2:2.0 }
         self.asteroids = None
         self.exploding_ship = None
-        self.score = 0
+        self.score = 0 
+        self.prev_score = 0
         self.game_over = False
         self.font = pygame.font.Font('images/Hyperspace.otf', 100)
         self.font_large = pygame.font.Font('images/Hyperspace.otf', 300)
+        # 20 points for a large asteroid, 50 for a medium, and 100 for a small one. Flying saucers award higher points: 200 for a large saucer and 1,000 for a small one. A bonus ship is also awarded for every 10,000
+        self.scores = {
+            'big': 20,
+            'medium': 50,
+            'small': 100,
+            'ufo':200,
+            'small-ufo':1000,
+        }
+        self.extra_life = 10000
 
         # top, left coord or score
         self.score_x = 200
@@ -76,6 +86,11 @@ class Game:
             self.level += 1
             print("level up",self.level)
             self.init_asteroids()
+
+    def score_update(self):
+        if (self.score // self.extra_life - self.prev_score // self.extra_life) > 0:
+            self.lives.lives += 1
+        self.prev_score = self.score
 
 
 class Ufo:
@@ -388,7 +403,7 @@ def display_score(score):
     screen.blit(scoreText, scoreTextRect)
 
 def display_end():
-    end_text = game.font_large.render("THE END", True, (255, 255, 255))
+    end_text = game.font_large.render("GAME OVER", True, (255, 255, 255))
     end_rect = end_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 )
     screen.blit(end_text, end_rect)
 
@@ -405,6 +420,7 @@ def bullets_hit_asteroids( game ):
                         bullet.bullet_in_flight = False
                         # - asteroid should be split in two (if it is big or medium size, if small then just destroyed)
                         asteroid.asteroid_in_flight = False
+                        game.score += game.scores[asteroid.size]
                         if asteroid.size in ['big','medium']:
                             new_size = {'big':'medium', 'medium':'small'}[asteroid.size]
                             ast1 = Asteroid( asteroid.asteroid_x, asteroid.asteroid_y, asteroid.speed, new_size )
@@ -424,6 +440,7 @@ def bullets_hit_ufo(game):
                     bullet.bullet_in_flight = False
                     game.ufo.in_flight = False
                     game.ufo.explode()
+                    game.score += game.scores['ufo']
 
 def ufo_bullet_vs_ship( game ):
     if game.ufo.bullet.bullet_in_flight:
@@ -534,6 +551,7 @@ def update():
         game.ship.update()
     game.ufo.update()
     game.level_update()
+    game.score_update()
 
 def on_key_down(key):
     global rotate_speed
@@ -560,6 +578,8 @@ def on_key_down(key):
                 bull.bullet_angle = game.ship.angle
                 bull.bullet_speed = 12
                 break
+
+
 
 def on_key_up(key):
     if key == keys.W:
