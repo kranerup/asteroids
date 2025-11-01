@@ -53,9 +53,19 @@ class Game:
         self.speed = { 0: 1.0, 1:1.5, 2:2.0 }
         self.asteroids = None
         self.exploding_ship = None
+        self.score = 0
+        self.game_over = False
+        self.font = pygame.font.Font('images/Hyperspace.otf', 100)
+        self.font_large = pygame.font.Font('images/Hyperspace.otf', 300)
+
+        # top, left coord or score
+        self.score_x = 200
+        self.score_y = 10
+        self.lives_x = self.score_x + 50
+        self.lives_y = self.score_y + 180
         self.ship = Ship()
         self.bullets = [ Bullet() for _ in range(10) ]
-        self.lives = Lives()
+        self.lives = Lives(self)
         self.ufo = Ufo()
 
     def init_asteroids(self):
@@ -66,6 +76,7 @@ class Game:
             self.level += 1
             print("level up",self.level)
             self.init_asteroids()
+
 
 class Ufo:
     def __init__(self):
@@ -356,19 +367,33 @@ class ExplodingShip:
         return all( [ not d.in_flight for d in self.debris ])
 
 class Lives:
-    def __init__(self):
+    def __init__(self,game):
         self.lives = 4
         self.life_symbols = []
-        x = WIDTH // 5
+        x = game.lives_x
         for l in range(15): # max lives
-            a = Actor("ship", center=(x, 100))
-            a.scale = 3.0
+            a = Actor("ship", center=(x, game.lives_y ))
+            a.scale = 2.5
             x += a.width * 1.1
             self.life_symbols.append(a)
 
     def draw(self):
         for l in range(self.lives):
             self.life_symbols[l].draw()
+
+def display_score(score):
+    scoreStr = str("%02d" % score)
+    scoreText = game.font.render(scoreStr, True, (255, 255, 255))
+    scoreTextRect = scoreText.get_rect(left = game.score_x, top = game.score_y )
+    screen.blit(scoreText, scoreTextRect)
+
+def display_end():
+    end_text = game.font_large.render("THE END", True, (255, 255, 255))
+    end_rect = end_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 )
+    screen.blit(end_text, end_rect)
+
+game = Game()
+
 
 def bullets_hit_asteroids( game ):
     for bullet in game.bullets:
@@ -419,7 +444,6 @@ def asteroid_vs_ship( game ):
                 return True
     return False
 
-game = Game()
 
 
 def draw():
@@ -434,6 +458,9 @@ def draw():
         game.ship.draw()
     game.lives.draw()
     game.ufo.draw()
+    display_score(game.score)
+    if game.game_over:
+        display_end()
 
 def directional_movement( angle ):
     tangle = angle + 90.0
@@ -467,31 +494,35 @@ def update():
     global bullets
 
     game.ship.angle += rotate_speed
-    if keyboard.W:
-        game.ship.thrust()
 
-    if keyboard.A:
-        rotate_speed += 0.6
-    elif keyboard.D:
-        rotate_speed -= 0.6
+    if not game.game_over:
+        if keyboard.W:
+            game.ship.thrust()
 
-    rotate_speed = rotate( rotate_speed )
+        if keyboard.A:
+            rotate_speed += 0.6
+        elif keyboard.D:
+            rotate_speed -= 0.6
 
-    game.ship.angle += rotate_speed
+        rotate_speed = rotate( rotate_speed )
 
-    bullets_hit_asteroids( game )
-    bullets_hit_ufo( game )
-    collision = asteroid_vs_ship( game )
-    collision = collision or ufo_vs_ship( game )
-    collision = collision or ufo_bullet_vs_ship( game )
+        game.ship.angle += rotate_speed
 
-    if collision and not game.exploding_ship:
-        game.exploding_ship = ExplodingShip(game.ship)
-        game.lives.lives -= 1
+        bullets_hit_asteroids( game )
+        bullets_hit_ufo( game )
+        collision = asteroid_vs_ship( game )
+        collision = collision or ufo_vs_ship( game )
+        collision = collision or ufo_bullet_vs_ship( game )
 
-    if game.exploding_ship and game.exploding_ship.done():
-        game.exploding_ship = None
-        game.ship.respawn()
+        if collision and not game.exploding_ship:
+            game.exploding_ship = ExplodingShip(game.ship)
+            game.lives.lives -= 1
+            if game.lives.lives == 0:
+                game.game_over = True
+
+        if game.exploding_ship and game.exploding_ship.done():
+            game.exploding_ship = None
+            game.ship.respawn()
 
     for bull in game.bullets:
         bull.update()
@@ -507,6 +538,9 @@ def update():
 def on_key_down(key):
     global rotate_speed
     global game
+
+    if game.game_over:
+        return
 
     if key == keys.A:
         rotate_speed += 0.6
