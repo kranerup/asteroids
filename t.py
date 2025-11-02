@@ -1,4 +1,6 @@
 import os
+from pprint import pformat
+import importlib.util
 from mimetypes import guess_all_extensions
 
 os.environ['SDL_VIDEODRIVER'] = 'x11'
@@ -46,17 +48,32 @@ def near_edges():
         y = randrange(HEIGHT // 4, HEIGHT * 3 // 4)
     return (x, y, angle)
 
+def highscore_db_write():
+    data = { 'highscores': game.highscores }
+    with open('hsdb.py', 'w') as f:
+        for key, value in data.items():
+            f.write(f"{key} = {pformat(value)}\n\n")
+
+def highscore_db_read():
+    try:
+        spec = importlib.util.spec_from_file_location("database", "hsdb.py")
+        db = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(db)
+
+        highscores = db.highscores
+    except FileNotFoundError:
+        highscores = [{'initials':'', 'score':0}] * 10
+    return highscores
+
 class Game:
     def __init__(self):
-        self.level = 0
+        self.initial_lives = 4
         self.nr_asteroids = { 0: 3, 1: 4, 2:5 }
         self.speed = { 0: 1.0, 1:1.5, 2:2.0 }
-        self.asteroids = None
-        self.exploding_ship = None
-        self.score = 0 
-        self.prev_score = 0
-        self.game_over = False
+        self.initials = ""
+        self.highscores = highscore_db_read()
         self.font = pygame.font.Font('images/Hyperspace.otf', 100)
+        self.font_medium = pygame.font.Font('images/Hyperspace.otf', 150)
         self.font_large = pygame.font.Font('images/Hyperspace.otf', 300)
         # 20 points for a large asteroid, 50 for a medium, and 100 for a small one. Flying saucers award higher points: 200 for a large saucer and 1,000 for a small one. A bonus ship is also awarded for every 10,000
         self.scores = {
@@ -73,10 +90,33 @@ class Game:
         self.score_y = 10
         self.lives_x = self.score_x + 50
         self.lives_y = self.score_y + 180
+
+        highscore_db_read()
+        self.init()
+
+    def init(self):
+        self.level = 0
         self.ship = Ship()
         self.bullets = [ Bullet() for _ in range(10) ]
         self.lives = Lives(self)
         self.ufo = Ufo()
+        self.asteroids = None
+        self.exploding_ship = None
+        self.score = 0
+        self.prev_score = 0
+        self.game_over = False
+        self.get_highscore = False
+        self.show_highscore = False
+        self.restart = False
+        self.init_asteroids()
+
+    def over(self):
+        self.game_over = True
+        min_score = min( [ x['score'] for x in game.highscores ] )
+        if game.score >= min_score:
+            self.get_highscore = True
+        else:
+            self.show_highscore = True
 
     def init_asteroids(self):
         self.asteroids = [ Asteroid(-300, -300, self.speed.get(self.level,3.0)) for _ in range(self.nr_asteroids.get(self.level, 7)) ]
@@ -383,7 +423,7 @@ class ExplodingShip:
 
 class Lives:
     def __init__(self,game):
-        self.lives = 4
+        self.lives = game.initial_lives
         self.life_symbols = []
         x = game.lives_x
         for l in range(15): # max lives
@@ -404,8 +444,32 @@ def display_score(score):
 
 def display_end():
     end_text = game.font_large.render("GAME OVER", True, (255, 255, 255))
-    end_rect = end_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 )
+    end_rect = end_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 - 150 )
     screen.blit(end_text, end_rect)
+
+
+def display_high_dialog():
+    hi_text = game.font_medium.render("TOP 10 SCORE", True, (255, 255, 255))
+    hi_rect = hi_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 + 100 )
+    screen.blit(hi_text, hi_rect)
+    init_text = game.font_medium.render(f"ENTER INITIALS:{game.initials}", True, (255, 255, 255))
+    init_rect = init_text.get_rect(centerx = WIDTH//2, centery = HEIGHT//2 + 250 )
+    screen.blit(init_text, init_rect)
+
+def display_highscores():
+    hi_text = game.font_medium.render("TOP 10 SCORE", True, (255, 255, 255))
+    hi_rect = hi_text.get_rect( centerx = WIDTH//2, centery = HEIGHT//2 - 600 )
+    screen.blit(hi_text, hi_rect)
+
+    y = HEIGHT//2 - 600 + 140
+    for item in sorted(game.highscores, key=lambda x: x['score'], reverse=True):
+        istr = "--" if len(item['initials']) == 0 else item['initials']
+        sstr = f"{istr}  {item['score']}"
+        hi_text = game.font_medium.render(sstr, True, (255, 255, 255))
+        hi_rect = hi_text.get_rect(x=WIDTH // 2 - 400, centery=y)
+        screen.blit(hi_text, hi_rect)
+        y += 140
+
 
 game = Game()
 
@@ -464,6 +528,8 @@ def asteroid_vs_ship( game ):
 
 
 def draw():
+    if game.restart:
+        return
     screen.clear()
     for ast in game.asteroids:
         ast.draw()
@@ -476,8 +542,12 @@ def draw():
     game.lives.draw()
     game.ufo.draw()
     display_score(game.score)
-    if game.game_over:
+    if game.game_over and not game.show_highscore:
         display_end()
+    if game.get_highscore:
+        display_high_dialog()
+    if game.show_highscore:
+        display_highscores()
 
 def directional_movement( angle ):
     tangle = angle + 90.0
@@ -489,15 +559,15 @@ def directional_movement( angle ):
 
 def rotate( rotate_speed ):
     if rotate_speed > 0:
-        if rotate_speed <= 0.5:
+        if rotate_speed <= 0.4:
             rotate_speed = 0
         else:
-            rotate_speed -= 0.5
+            rotate_speed -= 0.4
     elif rotate_speed < 0:
-        if rotate_speed > -0.5:
+        if rotate_speed > -0.4:
             rotate_speed = 0
         else:
-            rotate_speed += 0.5
+            rotate_speed += 0.4
 
     if rotate_speed < -5:
         rotate_speed = -5
@@ -510,6 +580,11 @@ def update():
     global rotate_speed
     global bullets
 
+    if game.restart:
+        game.restart = False
+        game.init()
+        return
+
     game.ship.angle += rotate_speed
 
     if not game.game_over:
@@ -517,9 +592,9 @@ def update():
             game.ship.thrust()
 
         if keyboard.A:
-            rotate_speed += 0.6
+            rotate_speed += 0.5
         elif keyboard.D:
-            rotate_speed -= 0.6
+            rotate_speed -= 0.5
 
         rotate_speed = rotate( rotate_speed )
 
@@ -535,7 +610,7 @@ def update():
             game.exploding_ship = ExplodingShip(game.ship)
             game.lives.lives -= 1
             if game.lives.lives == 0:
-                game.game_over = True
+                game.over()
 
         if game.exploding_ship and game.exploding_ship.done():
             game.exploding_ship = None
@@ -553,17 +628,32 @@ def update():
     game.level_update()
     game.score_update()
 
-def on_key_down(key):
+def on_key_down(key,mod,unicode):
     global rotate_speed
     global game
 
     if game.game_over:
+        if game.get_highscore:
+            if key == keys.RETURN:
+                game.show_highscore = True
+                game.get_highscore = False
+                game.highscores.append( {'initials':game.initials, 'score':game.score} )
+                game.highscores = sorted(game.highscores, key=lambda x: x['score'], reverse=True)[:10]
+                highscore_db_write()
+            elif key == keys.BACKSPACE:
+                if len(game.initials) > 0:
+                    game.initials = game.initials[:-1]
+            elif unicode != "":
+                if len(game.initials) < 2:
+                    game.initials += unicode
+        elif game.show_highscore:
+            game.restart = True
         return
 
     if key == keys.A:
-        rotate_speed += 0.6
+        rotate_speed += 0.4
     elif key == keys.D:
-        rotate_speed -= 0.6
+        rotate_speed -= 0.4
     elif key == keys.W:
         game.ship.thrust()
     elif key == keys.S:
@@ -585,6 +675,5 @@ def on_key_up(key):
     if key == keys.W:
         game.ship.thrust_off()
 
-game.init_asteroids()
 pgzrun.go()
 
